@@ -1,5 +1,5 @@
 // Discordgo - Discord bindings for Go
-// Available at https://github.com/bwmarrin/discordgo
+// Available at https://github.com/Jilwer/discordgo-selfbot
 
 // Copyright 2015-2016 Bruce Marriner <bruce@sqls.net>.  All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -40,6 +40,7 @@ type VoiceConnection struct {
 	deaf         bool
 	mute         bool
 	speaking     bool
+	camera       bool
 	reconnecting bool // If true, voice connection is trying to reconnect
 
 	OpusSend chan []byte  // Chan for sending opus audio
@@ -115,11 +116,11 @@ func (v *VoiceConnection) Speaking(b bool) (err error) {
 
 // ChangeChannel sends Discord a request to change channels within a Guild
 // !!! NOTE !!! This function may be removed in favour of just using ChannelVoiceJoin
-func (v *VoiceConnection) ChangeChannel(channelID string, mute, deaf bool) (err error) {
+func (v *VoiceConnection) ChangeChannel(channelID string, mute, deaf, camera bool) (err error) {
 
 	v.log(LogInformational, "called")
 
-	data := voiceChannelJoinOp{4, voiceChannelJoinData{&v.GuildID, &channelID, mute, deaf}}
+	data := voiceChannelJoinOp{4, voiceChannelJoinData{&v.GuildID, &channelID, mute, deaf, camera}}
 	v.session.wsMutex.Lock()
 	err = v.session.wsConn.WriteJSON(data)
 	v.session.wsMutex.Unlock()
@@ -141,7 +142,7 @@ func (v *VoiceConnection) Disconnect() (err error) {
 	// Send a OP4 with a nil channel to disconnect
 	v.Lock()
 	if v.sessionID != "" {
-		data := voiceChannelJoinOp{4, voiceChannelJoinData{&v.GuildID, nil, true, true}}
+		data := voiceChannelJoinOp{4, voiceChannelJoinData{&v.GuildID, nil, true, true, false}}
 		v.session.wsMutex.Lock()
 		err = v.session.wsConn.WriteJSON(data)
 		v.session.wsMutex.Unlock()
@@ -927,7 +928,7 @@ func (v *VoiceConnection) reconnect() {
 
 		v.log(LogInformational, "trying to reconnect to channel %s", v.ChannelID)
 
-		_, err := v.session.ChannelVoiceJoin(v.GuildID, v.ChannelID, v.mute, v.deaf)
+		_, err := v.session.ChannelVoiceJoin(v.GuildID, v.ChannelID, v.mute, v.deaf, v.camera)
 		if err == nil {
 			v.log(LogInformational, "successfully reconnected to channel %s", v.ChannelID)
 			return
@@ -938,7 +939,7 @@ func (v *VoiceConnection) reconnect() {
 		// if the reconnect above didn't work lets just send a disconnect
 		// packet to reset things.
 		// Send a OP4 with a nil channel to disconnect
-		data := voiceChannelJoinOp{4, voiceChannelJoinData{&v.GuildID, nil, true, true}}
+		data := voiceChannelJoinOp{4, voiceChannelJoinData{&v.GuildID, nil, true, true, false}}
 		v.session.wsMutex.Lock()
 		err = v.session.wsConn.WriteJSON(data)
 		v.session.wsMutex.Unlock()

@@ -1,5 +1,5 @@
 // Discordgo - Discord bindings for Go
-// Available at https://github.com/bwmarrin/discordgo
+// Available at https://github.com/Jilwer/discordgo-selfbot
 
 // Copyright 2015-2016 Bruce Marriner <bruce@sqls.net>.  All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -673,6 +673,7 @@ type voiceChannelJoinData struct {
 	ChannelID *string `json:"channel_id"`
 	SelfMute  bool    `json:"self_mute"`
 	SelfDeaf  bool    `json:"self_deaf"`
+	SelfVideo bool    `json:"self_video"`
 }
 
 type voiceChannelJoinOp struct {
@@ -682,11 +683,11 @@ type voiceChannelJoinOp struct {
 
 // ChannelVoiceJoin joins the session user to a voice channel.
 //
-//    gID     : Guild ID of the channel to join.
-//    cID     : Channel ID of the channel to join.
-//    mute    : If true, you will be set to muted upon joining.
-//    deaf    : If true, you will be set to deafened upon joining.
-func (s *Session) ChannelVoiceJoin(gID, cID string, mute, deaf bool) (voice *VoiceConnection, err error) {
+//	gID     : Guild ID of the channel to join.
+//	cID     : Channel ID of the channel to join.
+//	mute    : If true, you will be set to muted upon joining.
+//	deaf    : If true, you will be set to deafened upon joining.
+func (s *Session) ChannelVoiceJoin(gID, cID string, mute, deaf, camera bool) (voice *VoiceConnection, err error) {
 
 	s.log(LogInformational, "called")
 
@@ -705,11 +706,12 @@ func (s *Session) ChannelVoiceJoin(gID, cID string, mute, deaf bool) (voice *Voi
 	voice.GuildID = gID
 	voice.ChannelID = cID
 	voice.deaf = deaf
+	voice.camera = camera
 	voice.mute = mute
 	voice.session = s
 	voice.Unlock()
 
-	err = s.ChannelVoiceJoinManual(gID, cID, mute, deaf)
+	err = s.ChannelVoiceJoinManual(gID, cID, mute, deaf, camera)
 	if err != nil {
 		return
 	}
@@ -729,11 +731,11 @@ func (s *Session) ChannelVoiceJoin(gID, cID string, mute, deaf bool) (voice *Voi
 //
 // This should only be used when the VoiceServerUpdate will be intercepted and used elsewhere.
 //
-//    gID     : Guild ID of the channel to join.
-//    cID     : Channel ID of the channel to join, leave empty to disconnect.
-//    mute    : If true, you will be set to muted upon joining.
-//    deaf    : If true, you will be set to deafened upon joining.
-func (s *Session) ChannelVoiceJoinManual(gID, cID string, mute, deaf bool) (err error) {
+//	gID     : Guild ID of the channel to join.
+//	cID     : Channel ID of the channel to join, leave empty to disconnect.
+//	mute    : If true, you will be set to muted upon joining.
+//	deaf    : If true, you will be set to deafened upon joining.
+func (s *Session) ChannelVoiceJoinManual(gID, cID string, mute, deaf, camera bool) (err error) {
 
 	s.log(LogInformational, "called")
 
@@ -745,7 +747,7 @@ func (s *Session) ChannelVoiceJoinManual(gID, cID string, mute, deaf bool) (err 
 	}
 
 	// Send the request to Discord that we want to join the voice channel
-	data := voiceChannelJoinOp{4, voiceChannelJoinData{&gID, channelID, mute, deaf}}
+	data := voiceChannelJoinOp{4, voiceChannelJoinData{&gID, channelID, mute, deaf, camera}}
 	s.wsMutex.Lock()
 	err = s.wsConn.WriteJSON(data)
 	s.wsMutex.Unlock()
